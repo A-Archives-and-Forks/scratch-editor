@@ -2,6 +2,22 @@
     width: 1.5rem;
 }
 
+/*
+    Safari removes focus outline on elements inside overflow:hidden.
+    Since the preference submenu is inside a menu with overflow:hidden,
+    we need to override that here so that the focus outline is visible.
+    The preference submenus include a short list of options,
+    so the overflow:hidden is not necessary for them (as opposed to the Language menu)
+*/
+.preference-submenu {
+    overflow: visible;
+}
+
+.preference-submenu .menu {
+    overflow: visible;
+    box-shadow: none;
+}
+
 /* Unused? */
 .color-mode-label {
     flex: 1;
@@ -10,7 +26,17 @@
 .option {
     display: flex;
     align-items: center;
-    gap: .5rem;
+    gap: 0.5rem;
+
+    width: 100%;
+    padding: 0;
+
+    background: transparent;
+    border: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    color: inherit;
 }
 
 .check {
@@ -44,21 +70,6 @@
 
 [dir="rtl"] .expand-caret {
     transform: rotate(90deg);
-}
-
-/* Extra padding to deal with scrollbar overlapping options in Firefox */
-
-[dir="ltr"] .language-menu-item {
-    padding-right: 1rem;
-}
-
-[dir="rtl"] .language-menu-item {
-    padding-left: 1rem;
-}
-
-.language-submenu > ul {
-    max-height: calc(100vh - 5rem); /* Fallback if dvh not supported */
-    max-height: calc(100dvh - 5rem);
 }
 
 @media only screen and (max-width: 1024px) {

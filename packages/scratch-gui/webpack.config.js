@@ -55,6 +55,19 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         }
     })
     .addModuleRule({
+        test: /\.[cm]?jsx?$/,
+        include: [
+            /node_modules[\\/]@scratch[\\/]scratch-paint[\\/]src[\\/]/
+        ],
+        loader: 'babel-loader',
+        options: {
+            presets: [
+                '@babel/preset-env',
+                '@babel/preset-react'
+            ]
+        }
+    })
+    .addModuleRule({
         test: /\.(svg|png|wav|mp3|gif|jpg)$/,
         resourceQuery: /^$/, // reject any query string
         type: 'asset' // let webpack decide on the best type of asset
@@ -88,12 +101,12 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 noErrorOnMissing: true
             },
             {
-                context: '../../node_modules/scratch-storage/dist/web',
+                context: '../../node_modules/@scratch/scratch-storage/dist/web',
                 from: 'chunks/fetch-worker.*.{js,js.map}',
                 noErrorOnMissing: true
             },
             {
-                context: '../../node_modules/scratch-storage/dist/web',
+                context: '../../node_modules/@scratch/scratch-storage/dist/web',
                 from: 'chunks/vendors-*.{js,js.map}',
                 noErrorOnMissing: true
             },

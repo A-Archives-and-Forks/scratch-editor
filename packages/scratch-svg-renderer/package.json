@@ -41,7 +41,7 @@
     "test": "npm run test:lint && npm run test:unit",
     "test:lint": "eslint",
     "test:playwright": "playwright test",
-    "test:unit": "tap ./test/*.js",
+    "test:unit": "TAP_SNAPSHOT=1 tap ./test/*.js",
     "watch": "webpack --watch"
   },
   "browserslist": [

@@ -392,6 +392,105 @@ test('array payload: empty array returns empty results', async ({page}) => {
     expect(results).toEqual([]);
 });
 
+// --- Idle teardown ---
+
+test('does not tear down the iframe when idleTimeoutMs is unset (default)', async ({page}) => {
+    const iframeCount = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(
+            'window.onSandboxMessage = function () { return true; }'
+        );
+        try {
+            await sandbox.send(null);
+            // Wait well past a typical idle window; with no idleTimeoutMs the
+            // iframe must persist.
+            await new Promise(resolve => setTimeout(resolve, 400));
+            return document.querySelectorAll('iframe').length;
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(iframeCount).toBe(1);
+});
+
+test('tears down the idle iframe after idleTimeoutMs elapses', async ({page}) => {
+    const iframeCount = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(
+            'window.onSandboxMessage = function () { return true; }',
+            {idleTimeoutMs: 150}
+        );
+        await sandbox.send(null);
+        // No further activity — the idle timer should destroy the iframe.
+        await new Promise(resolve => setTimeout(resolve, 400));
+        return document.querySelectorAll('iframe').length;
+    });
+    expect(iframeCount).toBe(0);
+});
+
+test('idle timer does not fire while a send is in flight', async ({page}) => {
+    const result = await page.evaluate(async () => {
+        // Handler resolves after 300ms — longer than the 100ms idle window.
+        const sandbox = new window.Sandbox(`
+            window.onSandboxMessage = function () {
+                return new Promise(function (resolve) {
+                    setTimeout(function () { resolve('ok'); }, 300);
+                });
+            }
+        `, {idleTimeoutMs: 100});
+        try {
+            // If the idle timer tore the iframe down mid-flight, this would
+            // reject with "Sandbox destroyed" instead of resolving.
+            return await sandbox.send(null);
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(result).toBe('ok');
+});
+
+test('recreates a fresh iframe after idle teardown', async ({page}) => {
+    const result = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(`
+            var count = 0;
+            window.onSandboxMessage = function () { return ++count; };
+        `, {idleTimeoutMs: 150});
+        try {
+            const first = await sandbox.send(null); // 1 on the first iframe
+            // Let the idle timer tear the iframe down.
+            await new Promise(resolve => setTimeout(resolve, 400));
+            const afterIdle = await sandbox.send(null); // fresh iframe: 1 again
+            return {first, afterIdle};
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(result.first).toBe(1);
+    expect(result.afterIdle).toBe(1);
+});
+
+test('activity resets the idle timer', async ({page}) => {
+    const result = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(`
+            var count = 0;
+            window.onSandboxMessage = function () { return ++count; };
+        `, {idleTimeoutMs: 300});
+        try {
+            // Sends spaced under the idle window — the iframe should stay
+            // alive throughout as each send resets the timer.
+            await sandbox.send(null);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await sandbox.send(null);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const count = await sandbox.send(null);
+            // Same iframe reused → counter reached 3, iframe still present.
+            return {count, iframes: document.querySelectorAll('iframe').length};
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(result.count).toBe(3);
+    expect(result.iframes).toBe(1);
+});
+
 // --- Performance comparison test ---
 test('reused sandbox is faster than creating a new one per call', async ({page}) => {
     const {freshMs, reusedMs, batchMs} = await page.evaluate(async () => {

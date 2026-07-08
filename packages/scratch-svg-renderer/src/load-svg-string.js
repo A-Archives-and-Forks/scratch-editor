@@ -13,6 +13,12 @@ const getFonts = require('scratch-render-fonts');
  */
 let measurementSandbox = null;
 
+// Tear the measurement iframe down after this many milliseconds with no
+// measurements. It is created on project load and would otherwise stay in the
+// DOM for the whole session (including player-only sessions that never paint).
+// The window is long enough to span a project load or a burst of costume loads.
+const MEASUREMENT_IDLE_TIMEOUT_MS = 10000;
+
 /**
  * Get (or create) the singleton measurement sandbox.
  * @returns {Sandbox} The shared sandbox instance for SVG measurement.
@@ -22,7 +28,7 @@ const getMeasurementSandbox = () => {
         const fonts = getFonts();
         const fontCSS = Object.values(fonts).join('');
         const script = createMeasureSvgScript(fontCSS);
-        measurementSandbox = new Sandbox(script);
+        measurementSandbox = new Sandbox(script, {idleTimeoutMs: MEASUREMENT_IDLE_TIMEOUT_MS});
     }
     return measurementSandbox;
 };

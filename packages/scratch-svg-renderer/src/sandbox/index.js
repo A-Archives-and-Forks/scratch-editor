@@ -32,18 +32,54 @@
      * @param {object} [options] Configuration options.
      * @param {number} [options.timeoutMs] Per-send timeout in
      *     milliseconds (default 30000). Set to 0 to disable.
+     * @param {number} [options.idleTimeoutMs] If greater than 0, the iframe is
+     *     destroyed after this many milliseconds with no in-flight calls; the
+     *     next `send()` lazily creates a fresh one. Default 0 (never auto-destroy),
+     *     which keeps the iframe alive for the lifetime of the page.
      */
-        constructor (script, {timeoutMs = DEFAULT_TIMEOUT_MS} = {}) {
+        constructor (script, {timeoutMs = DEFAULT_TIMEOUT_MS, idleTimeoutMs = 0} = {}) {
             // Defensive copy so a caller mutating the original string after construction
             // doesn't affect a sandbox that has already been created but not yet sent.
             this._script = String(script);
             this._timeoutMs = timeoutMs;
+            this._idleTimeoutMs = idleTimeoutMs;
             this._iframe = null;
             this._ready = null;
             this._onMessage = null;
             this._pendingTickets = new Map();
             this._scriptSent = false;
             this._nextTicket = 1;
+            this._idleTimerId = null;
+        }
+
+        /**
+         * Clear any pending idle-teardown timer.
+         */
+        _clearIdleTimer () {
+            if (this._idleTimerId !== null) {
+                clearTimeout(this._idleTimerId);
+                this._idleTimerId = null;
+            }
+        }
+
+        /**
+         * Schedule destruction of the iframe after the idle window, but only
+         * when idle teardown is enabled, an iframe exists, and no calls are in
+         * flight. When it fires after a period of inactivity, the iframe is
+         * destroyed; the next `send()` lazily recreates it.
+         */
+        _scheduleIdleTeardown () {
+            this._clearIdleTimer();
+            if (this._idleTimeoutMs > 0 && this._iframe && this._pendingTickets.size === 0) {
+                this._idleTimerId = setTimeout(() => {
+                    this._idleTimerId = null;
+                    // A send may have started after the timer was armed; only
+                    // tear down if still idle.
+                    if (this._pendingTickets.size === 0) {
+                        this.destroy();
+                    }
+                }, this._idleTimeoutMs);
+            }
         }
 
         /**
@@ -88,6 +124,10 @@
                 } else {
                     pending.reject(new Error(data.__sandbox_error));
                 }
+
+                // The call settled; restart the idle countdown if nothing else
+                // is in flight.
+                this._scheduleIdleTeardown();
             };
 
             window.addEventListener('message', this._onMessage);
@@ -117,6 +157,9 @@
          * @returns {Promise<object>} The value returned by onSandboxMessage.
          */
         async send (payload) {
+            // Activity: cancel any pending idle teardown so we never destroy the
+            // iframe out from under an imminent send.
+            this._clearIdleTimer();
             await this._ensureIframe();
 
             const ticket = this._nextTicket++;
@@ -138,6 +181,9 @@
                         reject(new Error(
                             `Sandbox: timed out after ${this._timeoutMs}ms`
                         ));
+                        // The call settled (by timing out); restart the idle
+                        // countdown if nothing else is in flight.
+                        this._scheduleIdleTeardown();
                     }, this._timeoutMs);
                 }
 
@@ -151,6 +197,7 @@
          * After `destroy()`, the next `send()` lazily creates a fresh iframe.
          */
         destroy () {
+            this._clearIdleTimer();
             for (const pending of this._pendingTickets.values()) {
                 if (pending.timeoutId !== null) {
                     clearTimeout(pending.timeoutId);

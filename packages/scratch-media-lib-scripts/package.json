@@ -28,7 +28,7 @@
     "json5": "2.2.3"
   },
   "devDependencies": {
-    "eslint": "9.39.4",
+    "eslint": "9.39.5",
     "eslint-config-scratch": "14.1.46",
     "jest": "30.4.2",
     "jest-junit": "16.0.0",

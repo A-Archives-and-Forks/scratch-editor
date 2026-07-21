@@ -206,6 +206,34 @@ test('iframe srcdoc contains CSP meta tag', async ({page}) => {
     expect(srcdoc).toContain('Content-Security-Policy');
     expect(srcdoc).toContain("default-src 'none'");
     expect(srcdoc).toContain("script-src 'unsafe-inline' 'unsafe-eval'");
+    expect(srcdoc).toContain('img-src data:');
+});
+
+test('data: images are permitted by the CSP', async ({page}) => {
+    // SVG costumes embed raster/nested-SVG artwork as `data:` URIs in <image>
+    // elements. The sandbox must be able to load them (measurement getBBox,
+    // Paper.js raster import) — without img-src, default-src 'none' blocks them.
+    const result = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(`
+            window.onSandboxMessage = function (dataUri) {
+                return new Promise(function (resolve) {
+                    var img = new Image();
+                    img.onload = function () { resolve('loaded'); };
+                    img.onerror = function () { resolve('blocked'); };
+                    img.src = dataUri;
+                });
+            }
+        `);
+        try {
+            // 1x1 transparent PNG.
+            const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB' +
+                'CAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+            return await sandbox.send(png);
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(result).toBe('loaded');
 });
 
 // --- Persistent iframe reuse tests ---

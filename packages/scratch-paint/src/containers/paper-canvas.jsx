@@ -90,6 +90,12 @@ class PaperCanvas extends React.Component {
         paper.remove();
     }
     clearQueuedImport () {
+        // Cancel any in-flight async import. importSvg applies its result
+        // only while its captured generation still matches this counter, so
+        // bumping it makes a late callback bail instead of touching a
+        // paper.project that has been removed (unmount) or replaced by a
+        // newer import.
+        this._importGeneration += 1;
         if (this.queuedImport) {
             window.clearTimeout(this.queuedImport);
             this.queuedImport = null;

@@ -63,10 +63,6 @@ const createPaperImportScript = paperJsSource => {
         // parsed node into document.body during processing. This is the
         // operation that must run inside the sandbox — any code execution
         // triggered by DOM insertion is contained to the opaque origin.
-        //
-        // We use the onLoad callback to wait for embedded raster images
-        // (base64 data URIs in <image> elements) to finish loading before
-        // exporting JSON.
         return new Promise(function (resolve, reject) {
             paper.project.importSVG(svg, {
                 expandShapes: true,
@@ -76,12 +72,42 @@ const createPaperImportScript = paperJsSource => {
                         return;
                     }
 
-                    // Export just the imported item's JSON (not the whole
-                    // project). The parent will use activeLayer.importJSON()
-                    // to re-create this single item.
-                    var paperJSON = imported.exportJSON({asString: true});
+                    // Paper positions each embedded <image> raster in a 'load'
+                    // handler that runs after this onLoad returns, so no raster
+                    // is placed yet. Serializing now would export them at the
+                    // origin, landing them in the wrong place after re-import.
+                    // Wait for every raster's 'load' so paper has baked the
+                    // positions into the exported matrices first.
+                    var finish = function () {
+                        // Export just the imported item's JSON (not the whole
+                        // project). The parent will use activeLayer.importJSON()
+                        // to re-create this single item.
+                        var paperJSON = imported.exportJSON({asString: true});
+                        resolve({paperJSON: paperJSON, viewBox: viewBox});
+                    };
 
-                    resolve({paperJSON: paperJSON, viewBox: viewBox});
+                    var rasters = imported.className === 'Raster' ?
+                        [imported] : imported.getItems({class: paper.Raster});
+
+                    if (rasters.length === 0) {
+                        finish();
+                        return;
+                    }
+
+                    var remaining = rasters.length;
+                    // A raster that errors (e.g. an undecodable data: URI)
+                    // never fires 'load'; settle on 'error' too so a single
+                    // broken image can't stall the whole import.
+                    var onSettled = function () {
+                        remaining -= 1;
+                        if (remaining === 0) {
+                            finish();
+                        }
+                    };
+                    for (var j = 0; j < rasters.length; j++) {
+                        rasters[j].on('load', onSettled);
+                        rasters[j].on('error', onSettled);
+                    }
                 },
                 onError: function (message) {
                     reject(new Error('SVG import error: ' + message));

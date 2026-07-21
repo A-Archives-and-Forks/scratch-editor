@@ -21,7 +21,7 @@
  * function that accepts a payload and returns a result (or a Promise of a result).
  */
 const CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; " +
-    "style-src 'unsafe-inline'; font-src data:;";
+    "style-src 'unsafe-inline'; font-src data:; img-src data:;";
 
 const IFRAME_HTML = `<!DOCTYPE html>
 <html>

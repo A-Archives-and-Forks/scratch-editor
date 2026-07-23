@@ -35,6 +35,7 @@ window.addEventListener('message', function (event) {
         var scriptText = event.data.__sandbox_script;
         var payload = event.data.__sandbox_payload;
         var ticket = event.data.__sandbox_ticket;
+        var warm = event.data.__sandbox_warm;
 
         // Evaluate the caller's script if provided. The script is sent only
         // with the first message; subsequent messages reuse the
@@ -45,6 +46,14 @@ window.addEventListener('message', function (event) {
 
         if (typeof window.onSandboxMessage !== 'function') {
             throw new Error('Script did not define window.onSandboxMessage');
+        }
+
+        // A warm-up message only evaluates the caller's script — running its
+        // top-level setup (e.g. paper.setup, font decode) — so the first real
+        // send skips that cost. Acknowledge without invoking onSandboxMessage.
+        if (warm) {
+            parent.postMessage({__sandbox_result: undefined, __sandbox_ticket: ticket}, '*');
+            return;
         }
 
         // targetOrigin '*' is intentional: this iframe has an opaque origin

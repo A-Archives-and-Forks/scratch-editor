@@ -30,4 +30,16 @@ const getPaperSandbox = () => {
     return paperSandboxPromise;
 };
 
-export {getPaperSandbox};
+/**
+ * Eagerly load the Paper.js chunk and warm the sandbox iframe (create it and
+ * evaluate Paper.js inside it) so the first costume import pays none of the
+ * cold-start cost. Best-effort: a failure here is swallowed and retried
+ * lazily by the first real `importSvg`.
+ * @returns {Promise<void>} Resolves once warm-up completes or is abandoned.
+ */
+const prewarmPaperSandbox = () =>
+    getPaperSandbox()
+        .then(sandbox => sandbox.warmUp())
+        .catch(() => {});
+
+export {getPaperSandbox, prewarmPaperSandbox};

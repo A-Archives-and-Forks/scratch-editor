@@ -148,25 +148,40 @@
         }
 
         /**
+         * Eagerly create the iframe and evaluate the caller's script so its
+         * top-level setup (e.g. paper.setup, font decode) runs ahead of time.
+         * The first subsequent `send()` then pays neither the iframe-load nor
+         * the script-eval cost. Safe to call repeatedly and concurrently with
+         * `send()`: it is a no-op once the script has been sent.
+         * @returns {Promise<void>} Resolves once the iframe has acknowledged.
+         */
+        async warmUp () {
+            if (this._scriptSent) return;
+            await this.send(null, {warm: true});
+        }
+
+        /**
          * Send a payload to the iframe and return the result.
          *
          * The payload can be any structured-cloneable value. If you need to
          * process multiple items in a single round-trip, pass an array as the
          * payload and handle it in your `onSandboxMessage` function.
          * @param {object} payload The value to pass to onSandboxMessage.
+         * @param {object} [options] Internal options.
+         * @param {boolean} [options.warm] Send a warm-up message that only
+         *     evaluates the script without invoking onSandboxMessage.
          * @returns {Promise<object>} The value returned by onSandboxMessage.
          */
-        async send (payload) {
+        async send (payload, {warm = false} = {}) {
             // Activity: cancel any pending idle teardown so we never destroy the
             // iframe out from under an imminent send.
             this._clearIdleTimer();
             await this._ensureIframe();
 
             const ticket = this._nextTicket++;
-            const message = {
-                __sandbox_payload: payload,
-                __sandbox_ticket: ticket
-            };
+            const message = warm ?
+                {__sandbox_warm: true, __sandbox_ticket: ticket} :
+                {__sandbox_payload: payload, __sandbox_ticket: ticket};
 
             if (!this._scriptSent) {
                 message.__sandbox_script = this._script;

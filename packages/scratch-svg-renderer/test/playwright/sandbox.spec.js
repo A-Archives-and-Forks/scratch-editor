@@ -281,6 +281,71 @@ test('script is evaluated only once', async ({page}) => {
     expect(results).toEqual([1, 1]);
 });
 
+test('warmUp evaluates the script and creates the iframe', async ({page}) => {
+    const result = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(`
+            window.__sideEffect = 'set at eval time';
+            window.onSandboxMessage = function () {
+                return window.__sideEffect;
+            };
+        `);
+        try {
+            await sandbox.warmUp();
+            return {
+                iframes: document.querySelectorAll('iframe').length,
+                // The script ran during warm-up, so its eval-time side
+                // effect is already observable on the first send.
+                sideEffect: await sandbox.send(null)
+            };
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(result.iframes).toBe(1);
+    expect(result.sideEffect).toBe('set at eval time');
+});
+
+test('warmUp does not re-evaluate the script on the following send', async ({page}) => {
+    const evalCount = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(`
+            if (!window.__evalCount) window.__evalCount = 0;
+            window.__evalCount++;
+            window.onSandboxMessage = function () {
+                return window.__evalCount;
+            };
+        `);
+        try {
+            await sandbox.warmUp();
+            // The script was already evaluated during warm-up; send must not
+            // resend it, so __evalCount stays at 1.
+            return await sandbox.send(null);
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(evalCount).toBe(1);
+});
+
+test('warmUp is idempotent and does not re-evaluate the script', async ({page}) => {
+    const evalCount = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(`
+            if (!window.__evalCount) window.__evalCount = 0;
+            window.__evalCount++;
+            window.onSandboxMessage = function () {
+                return window.__evalCount;
+            };
+        `);
+        try {
+            await sandbox.warmUp();
+            await sandbox.warmUp();
+            return await sandbox.send(null);
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(evalCount).toBe(1);
+});
+
 test('destroy removes iframe from DOM', async ({page}) => {
     const iframeCount = await page.evaluate(async () => {
         const sandbox = new window.Sandbox(

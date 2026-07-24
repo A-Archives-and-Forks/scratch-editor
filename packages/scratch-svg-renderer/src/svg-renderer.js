@@ -98,9 +98,10 @@ class SvgRenderer {
      * @param {!string} svgString String of SVG data to draw in quirks-mode.
      * @param {?boolean} fromVersion2 True if we should perform conversion from version 2 to version 3 svg.
      * @param {Function} [onFinish] - An optional callback to call when the SVG is loaded and can be rendered.
+     * @returns {Promise<void>} Resolves once the SVG is loaded and its image has been prepared.
      */
     loadSVG (svgString, fromVersion2, onFinish) {
-        this.loadString(svgString, fromVersion2).then(() => {
+        return this.loadString(svgString, fromVersion2).then(() => {
             this._createSVGImage(onFinish);
         });
     }

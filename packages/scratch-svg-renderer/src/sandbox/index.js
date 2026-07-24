@@ -139,6 +139,10 @@
                 iframe.addEventListener('error', () => {
                     reject(new Error('Sandbox iframe failed to load'));
                 });
+            }).catch(error => {
+                // Reset state so a subsequent send() can retry with a fresh iframe.
+                this.destroy();
+                throw error;
             });
 
             iframe.srcdoc = IFRAME_HTML;

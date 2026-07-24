@@ -28,11 +28,11 @@
     "json5": "2.2.3"
   },
   "devDependencies": {
-    "eslint": "9.39.4",
-    "eslint-config-scratch": "14.1.43",
+    "eslint": "9.39.5",
+    "eslint-config-scratch": "14.1.52",
     "jest": "30.4.2",
     "jest-junit": "16.0.0",
-    "prettier": "3.9.4"
+    "prettier": "3.9.6"
   },
   "jest": {
     "reporters": [

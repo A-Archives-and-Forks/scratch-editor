@@ -79,7 +79,7 @@
     "scratch-sb1-converter": "2.0.279",
     "scratch-translate-extension-languages": "1.0.7",
     "text-encoding": "0.7.0",
-    "tslog": "4.10.2",
+    "tslog": "4.11.0",
     "uuid": "8.3.2"
   },
   "devDependencies": {
@@ -90,8 +90,8 @@
     "callsite": "1.0.0",
     "copy-webpack-plugin": "6.4.1",
     "docdash": "1.2.0",
-    "eslint": "9.39.4",
-    "eslint-config-scratch": "14.1.43",
+    "eslint": "9.39.5",
+    "eslint-config-scratch": "14.1.52",
     "expose-loader": "1.0.3",
     "file-loader": "6.2.0",
     "format-message-cli": "6.2.4",
@@ -100,7 +100,7 @@
     "js-md5": "0.7.3",
     "pngjs": "3.4.0",
     "scratch-blocks": "2.1.19",
-    "scratch-l10n": "6.1.90",
+    "scratch-l10n": "6.1.97",
     "scratch-render-fonts": "1.0.252",
     "scratch-webpack-configuration": "3.1.2",
     "script-loader": "0.7.2",
@@ -108,7 +108,7 @@
     "tap": "21.7.4",
     "tiny-worker": "2.3.0",
     "typedoc": "0.28.18",
-    "webpack": "5.108.3",
+    "webpack": "5.108.4",
     "webpack-cli": "4.10.0",
     "webpack-dev-server": "5.2.6"
   }

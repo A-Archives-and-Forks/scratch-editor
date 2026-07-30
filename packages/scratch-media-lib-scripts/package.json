@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "eslint": "9.39.5",
-    "eslint-config-scratch": "14.1.53",
+    "eslint-config-scratch": "14.1.54",
     "jest": "30.4.2",
     "jest-junit": "16.0.0",
     "prettier": "3.9.6"

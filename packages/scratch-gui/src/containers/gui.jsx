@@ -163,6 +163,7 @@ GUI.propTypes = {
     shouldStopProject: PropTypes.bool,
     telemetryModalVisible: PropTypes.bool,
     username: PropTypes.string,
+    avatarBadge: PropTypes.number,
     userOwnsProject: PropTypes.bool,
     // TODO: Is this unused?
     hideTutorialProjects: PropTypes.bool,

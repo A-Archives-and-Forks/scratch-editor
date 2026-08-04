@@ -17,6 +17,12 @@
   },
   "main": "./dist/web/scratch-paint.js",
   "browser": "./src/index.js",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "TRADEMARK"
+  ],
   "scripts": {
     "build": "npm run clean && webpack --progress --bail",
     "clean": "rimraf ./dist && mkdirp dist && rimraf ./playground && mkdirp playground",

@@ -11,6 +11,12 @@
   "main": "./dist/node/scratch-storage.js",
   "browser": "./dist/web/scratch-storage.js",
   "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "TRADEMARK"
+  ],
   "scripts": {
     "build": "npm run clean && webpack --mode=production",
     "clean": "rimraf dist",

@@ -5,10 +5,8 @@ describe('getProjectThumbnail', () => {
     const SNAPSHOT_URI = 'data:image/png;base64,snapshot';
     const THUMBNAIL_URI = 'data:image/png;base64,thumbnail';
 
-    let OriginalImage;
     let drawImage;
     let thumbnailCanvas;
-    let imageFailsToDecode;
 
     // Build a VM whose renderer registers a snapshot callback and invokes it on draw, like RenderWebGL does.
     const makeVM = () => {
@@ -16,6 +14,7 @@ describe('getProjectThumbnail', () => {
         return {
             postIOData: jest.fn(),
             renderer: {
+                canvas: document.createElement('canvas'),
                 requestSnapshot: jest.fn(cb => snapshotCallbacks.push(cb)),
                 draw: jest.fn(() => {
                     snapshotCallbacks
@@ -29,22 +28,6 @@ describe('getProjectThumbnail', () => {
     beforeEach(() => {
         drawImage = jest.fn();
         thumbnailCanvas = null;
-        imageFailsToDecode = false;
-
-        OriginalImage = global.Image;
-        global.Image = class {
-            set src (value) {
-                this._src = value;
-                if (imageFailsToDecode) {
-                    this.onerror(new Error('decode failed'));
-                } else {
-                    this.onload();
-                }
-            }
-            get src () {
-                return this._src;
-            }
-        };
 
         const createElement = document.createElement.bind(document);
         jest.spyOn(document, 'createElement').mockImplementation(tagName => {
@@ -63,19 +46,19 @@ describe('getProjectThumbnail', () => {
     });
 
     afterEach(() => {
-        global.Image = OriginalImage;
         jest.restoreAllMocks();
     });
 
     test('scales the snapshot to 480x360 regardless of the renderer canvas size', () => {
         const callback = jest.fn();
+        const vm = makeVM();
 
-        getProjectThumbnail(makeVM(), callback);
+        getProjectThumbnail(vm, callback);
 
         expect(thumbnailCanvas.width).toBe(480);
         expect(thumbnailCanvas.height).toBe(360);
         expect(drawImage).toHaveBeenCalledWith(
-            expect.any(global.Image),
+            vm.renderer.canvas,
             0,
             0,
             480,
@@ -84,10 +67,14 @@ describe('getProjectThumbnail', () => {
         expect(callback).toHaveBeenCalledWith(THUMBNAIL_URI);
     });
 
-    test('scales the snapshot the renderer produced', () => {
-        getProjectThumbnail(makeVM(), jest.fn());
+    test('scales synchronously while the renderer canvas contains the drawn frame', () => {
+        const callback = jest.fn();
+        const vm = makeVM();
 
-        expect(drawImage.mock.calls[0][0].src).toBe(SNAPSHOT_URI);
+        getProjectThumbnail(vm, callback);
+
+        expect(vm.renderer.draw).toHaveReturned();
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     test('restores the video preview before scaling', () => {
@@ -101,23 +88,14 @@ describe('getProjectThumbnail', () => {
         ]);
     });
 
-    test('logs and skips the callback when the snapshot cannot be decoded', () => {
-        const logError = jest.spyOn(log, 'error').mockImplementation(() => {});
-        const callback = jest.fn();
-        imageFailsToDecode = true;
-
-        getProjectThumbnail(makeVM(), callback);
-
-        expect(callback).not.toHaveBeenCalled();
-        expect(logError).toHaveBeenCalled();
-    });
-
-    test('notifies onError when the snapshot cannot be decoded', () => {
+    test('notifies onError when the renderer canvas cannot be scaled', () => {
         jest.spyOn(log, 'error').mockImplementation(() => {});
         const onError = jest.fn();
-        imageFailsToDecode = true;
+        drawImage.mockImplementation(() => {
+            throw new Error('scaling failed');
+        });
 
-        getProjectThumbnail(makeVM(), jest.fn(), onError);
+        storeProjectThumbnail(makeVM(), jest.fn(), onError);
 
         expect(onError).toHaveBeenCalled();
     });

@@ -2,28 +2,18 @@ import {getProjectThumbnail, storeProjectThumbnail} from '../../../src/lib/store
 import log from '../../../src/lib/log';
 
 describe('getProjectThumbnail', () => {
-    const SNAPSHOT_URI = 'data:image/png;base64,snapshot';
     const THUMBNAIL_URI = 'data:image/png;base64,thumbnail';
 
     let drawImage;
     let thumbnailCanvas;
 
-    // Build a VM whose renderer registers a snapshot callback and invokes it on draw, like RenderWebGL does.
-    const makeVM = () => {
-        const snapshotCallbacks = [];
-        return {
-            postIOData: jest.fn(),
-            renderer: {
-                canvas: document.createElement('canvas'),
-                requestSnapshot: jest.fn(cb => snapshotCallbacks.push(cb)),
-                draw: jest.fn(() => {
-                    snapshotCallbacks
-                        .splice(0)
-                        .forEach(cb => cb(SNAPSHOT_URI));
-                })
-            }
-        };
-    };
+    const makeVM = () => ({
+        postIOData: jest.fn(),
+        renderer: {
+            canvas: document.createElement('canvas'),
+            draw: jest.fn()
+        }
+    });
 
     beforeEach(() => {
         drawImage = jest.fn();
@@ -77,15 +67,22 @@ describe('getProjectThumbnail', () => {
         expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    test('restores the video preview before scaling', () => {
+    test('draws with the video preview hidden, then restores it before scaling', () => {
         const vm = makeVM();
+        vm.renderer.draw.mockImplementation(() => {
+            expect(vm.postIOData.mock.calls).toEqual([
+                ['video', {forceTransparentPreview: true}]
+            ]);
+        });
 
         getProjectThumbnail(vm, jest.fn());
 
+        expect(vm.renderer.draw).toHaveBeenCalledTimes(1);
         expect(vm.postIOData.mock.calls).toEqual([
             ['video', {forceTransparentPreview: true}],
             ['video', {forceTransparentPreview: false}]
         ]);
+        expect(drawImage).toHaveBeenCalled();
     });
 
     test('notifies onError when the renderer canvas cannot be scaled', () => {

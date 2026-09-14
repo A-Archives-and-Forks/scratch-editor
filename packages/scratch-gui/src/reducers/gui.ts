@@ -38,7 +38,11 @@ import {GUIConfig} from '../gui-config';
 const buildGuiMiddleware = () => compose(applyMiddleware(throttle(300, {leading: true, trailing: true})));
 
 /**
- * @deprecated Call {@link buildGuiMiddleware} once per store instead.
+ * @deprecated This is a single shared middleware instance, so every store that uses it
+ * applies the same `redux-throttle` middleware object, which keeps its pending-action
+ * timers in its own internal state. Multiple stores sharing that state can suppress or
+ * drop each other's throttled actions. Call {@link buildGuiMiddleware} instead to get a
+ * fresh middleware instance per store.
  */
 const guiMiddleware = buildGuiMiddleware();
 

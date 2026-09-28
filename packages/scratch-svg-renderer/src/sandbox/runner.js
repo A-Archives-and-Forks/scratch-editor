@@ -22,6 +22,11 @@
         parent.postMessage(message, '*');
     };
 
+    // Init data comes with the first message to each frame only, so a failed
+    // init is kept and reported on every later message. Otherwise the frame
+    // would keep answering with the data missing.
+    let initError = null;
+
     window.addEventListener('message', event => {
         // Window references are reachable cross-origin (w.frames[0].frames[k]),
         // so without this any page that embeds the editor could drive the frame.
@@ -31,17 +36,20 @@
         const ticket = data && data.__sandbox_ticket;
 
         try {
-            // Init data comes with the first message to each frame. It is
-            // sent once, so dropping it here would not fail again: the frame
-            // would keep answering with the data missing.
+            if (initError) throw initError;
             if (typeof data.__sandbox_init !== 'undefined') {
-                if (typeof window.onSandboxInit !== 'function') {
-                    throw new Error(
-                        'Sandbox: init data was provided but no frame script ' +
-                        'defined window.onSandboxInit'
-                    );
+                try {
+                    if (typeof window.onSandboxInit !== 'function') {
+                        throw new Error(
+                            'Sandbox: init data was provided but no frame script ' +
+                            'defined window.onSandboxInit'
+                        );
+                    }
+                    window.onSandboxInit(data.__sandbox_init);
+                } catch (err) {
+                    initError = err;
+                    throw err;
                 }
-                window.onSandboxInit(data.__sandbox_init);
             }
 
             if (typeof window.onSandboxMessage !== 'function') {

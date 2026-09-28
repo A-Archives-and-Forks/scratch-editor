@@ -6,8 +6,8 @@ const fs = require('fs');
  * That is not a preference. `paper-full` bundles the PaperScript parser, whose
  * Acorn dependency builds its keyword matchers with `new Function` at load
  * time, so the frame's policy — which grants no `'unsafe-eval'` — stops it
- * loading at all. These tests pin both halves of that reasoning: that the
- * swap is safe, and that it was necessary.
+ * loading at all. These tests pin both halves of that reasoning: that
+ * paper-core exports the same JSON, and that paper-full cannot load there.
  *
  * Paper takes its Node path under jsdom, so this compares the two builds in
  * one environment rather than reproducing the browser exactly.
@@ -67,7 +67,7 @@ describe('paper-core is a safe substitute for paper-full', () => {
     });
 });
 
-describe('why the swap was needed', () => {
+describe('paper-full cannot load under the frame policy', () => {
     test('paper-full builds functions at load time and paper-core does not', () => {
         expect(readDist('paper-full.min.js')).toContain('new Function');
         expect(readDist('paper-core.min.js')).not.toContain('new Function');

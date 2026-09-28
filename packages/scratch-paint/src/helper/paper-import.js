@@ -77,15 +77,14 @@
                         reject(new Error('SVG import failed'));
                         return;
                     }
-                    rastersSettled(imported).then(() => {
+                    // Resolving with the chain passes a throw from it to the caller.
+                    resolve(rastersSettled(imported).then(() => ({
                         // Export the imported item rather than the whole
                         // project; the parent re-creates it with
                         // activeLayer.importJSON().
-                        resolve({
-                            paperJSON: imported.exportJSON({asString: true}),
-                            viewBox: viewBox
-                        });
-                    });
+                        paperJSON: imported.exportJSON({asString: true}),
+                        viewBox: viewBox
+                    })));
                 },
                 onError: message => reject(new Error(`SVG import error: ${message}`))
             });

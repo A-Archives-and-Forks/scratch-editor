@@ -94,7 +94,7 @@ test.beforeEach(async ({page}) => {
 
 test('the harness page really is served with the policy', async ({page}) => {
     // A routing mistake that dropped the header would let every test below
-    // pass, recreating the blind spot this file closes.
+    // pass without testing the policy at all.
     const response = await page.goto(`${ORIGIN}/harness.html`);
 
     expect(response.headers()['content-security-policy']).toBe(SCRIPT_SRC);
@@ -109,8 +109,8 @@ const SVG_NO_VIEWBOX = '<svg xmlns="http://www.w3.org/2000/svg">' +
     '</svg>';
 
 test('measurement works under the policy', async ({page}) => {
-    // The regression test for the reported outage: on `develop` the frame's
-    // inline runner never runs and this times out. It goes through
+    // An inline frame script cannot run under this policy, so this only
+    // passes if the frame's scripts are fetched by URL. It goes through
     // loadSvgString because only the real path has fetchable script assets.
     await page.goto(`${ORIGIN}/harness.html`);
     await page.waitForFunction(() => typeof window.ScratchSVGRenderer === 'object');

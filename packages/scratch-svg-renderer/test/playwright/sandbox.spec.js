@@ -727,6 +727,27 @@ test('init data without an onSandboxInit handler fails loudly', async ({page}) =
     expect(error).toContain('window.onSandboxInit');
 });
 
+test('a failed init fails every later call to that frame, not just the first', async ({page}) => {
+    // Later messages carry no init data, so without this they would be
+    // answered as if init had succeeded.
+    const errors = await page.evaluate(async () => {
+        const sandbox = new window.Sandbox(
+            [{text: `
+                window.onSandboxInit = function () { throw new Error('init broke'); };
+                window.onSandboxMessage = function (p) { return p * 2; };
+            `}],
+            {init: 'some-data', timeoutMs: 3000}
+        );
+        const attempt = () => sandbox.send(21).then(() => null, e => e.message);
+        try {
+            return [await attempt(), await attempt()];
+        } finally {
+            sandbox.destroy();
+        }
+    });
+    expect(errors).toEqual(['init broke', 'init broke']);
+});
+
 test('a script missing this host\'s delivery form names itself', async ({page}) => {
     // file:// embeds script text, so a url-only descriptor cannot be used here.
     // Without this guard it fails deep in document generation with no clue
